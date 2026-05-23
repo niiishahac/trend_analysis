@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trend Analysis Dashboard — Charts</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy: #1E3A5F;
+    --navy2: #2E5F8A;
+    --orange: #E8832A;
+    --green: #27AE60;
+    --red: #E74C3C;
+    --gold: #F4C430;
+    --bg: #F4F6FB;
+    --card: #FFFFFF;
+    --text: #1a1a2e;
+    --muted: #6b7a99;
+    --border: #e2e8f0;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* ── Header ── */
+  header {
+    background: var(--navy);
+    padding: 28px 40px 22px;
+    position: relative;
+    overflow: hidden;
+  }
+  header::before {
+    content: '';
+    position: absolute; top: -60px; right: -60px;
+    width: 260px; height: 260px;
+    border-radius: 50%;
+    background: rgba(255,255,255,.04);
+  }
+  header::after {
+    content: '';
+    position: absolute; bottom: -40px; right: 160px;
+    width: 140px; height: 140px;
+    border-radius: 50%;
+    background: rgba(232,131,42,.12);
+  }
+  .header-inner { position: relative; z-index: 1; }
+  header h1 {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 26px;
+    color: #fff;
+    letter-spacing: -.5px;
+  }
+  header p { color: rgba(255,255,255,.6); font-size: 13px; margin-top: 4px; }
+  .header-badges { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+  .hbadge {
+    font-size: 11px; font-weight: 500;
+    padding: 4px 12px; border-radius: 20px;
+    background: rgba(255,255,255,.1); color: rgba(255,255,255,.85);
+    border: 1px solid rgba(255,255,255,.15);
+  }
+  .hbadge.accent { background: var(--orange); color: #fff; border-color: var(--orange); }
+
+  /* ── KPI strip ── */
+  .kpi-strip {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px,1fr));
+    gap: 12px;
+    padding: 20px 40px;
+    background: var(--navy2);
+  }
+  .kpi {
+    background: rgba(255,255,255,.1);
+    border-radius: 10px;
+    padding: 14px 16px;
+    border: 1px solid rgba(255,255,255,.1);
+  }
+  .kpi-label { font-size: 11px; color: rgba(255,255,255,.6); text-transform: uppercase; letter-spacing: .06em; }
+  .kpi-value { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 700; color: #fff; margin-top: 2px; }
+  .kpi-delta { font-size: 11px; margin-top: 2px; }
+  .kpi-delta.up { color: #6ee7b7; }
+  .kpi-delta.down { color: #fca5a5; }
+
+  /* ── Main grid ── */
+  main { padding: 28px 40px 40px; }
+  .page-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 13px; font-weight: 600;
+    color: var(--muted); text-transform: uppercase;
+    letter-spacing: .1em; margin-bottom: 20px;
+  }
+  .charts-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  .chart-card {
+    background: var(--card);
+    border-radius: 16px;
+    padding: 22px 24px 20px;
+    border: 1px solid var(--border);
+    box-shadow: 0 1px 3px rgba(0,0,0,.04);
+    position: relative;
+    overflow: hidden;
+  }
+  .chart-card.wide { grid-column: 1 / -1; }
+  .chart-card::before {
+    content: '';
+    position: absolute; top: 0; left: 0;
+    width: 4px; height: 100%;
+    background: var(--accent-line, var(--navy));
+    border-radius: 16px 0 0 16px;
+  }
+  .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 18px; }
+  .card-title { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700; color: var(--text); }
+  .card-sub { font-size: 11px; color: var(--muted); margin-top: 3px; }
+  .card-tag {
+    font-size: 10px; font-weight: 600;
+    padding: 3px 10px; border-radius: 20px;
+    background: var(--tag-bg, #EEF2FF);
+    color: var(--tag-color, var(--navy));
+    letter-spacing: .04em;
+  }
+  .chart-wrap { position: relative; }
+
+  /* ── Legend strip ── */
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 12px; }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); }
+  .legend-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+
+  /* ── Section label ── */
+  .section-sep {
+    font-family: 'Syne', sans-serif;
+    font-size: 12px; font-weight: 700;
+    color: var(--muted); text-transform: uppercase;
+    letter-spacing: .1em;
+    margin: 28px 0 16px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .section-sep::after {
+    content: ''; flex: 1; height: 1px; background: var(--border);
+  }
+
+  footer {
+    text-align: center;
+    padding: 20px;
+    font-size: 11px;
+    color: var(--muted);
+    border-top: 1px solid var(--border);
+    margin-top: 10px;
+  }
+
+  @media (max-width: 700px) {
+    header, .kpi-strip, main { padding-left: 16px; padding-right: 16px; }
+    .charts-grid { grid-template-columns: 1fr; }
+    .chart-card.wide { grid-column: 1; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <h1>Trend Analysis Dashboard</h1>
+    <p>FY 2022–2024 · Sales, Category, Regional & Customer Acquisition Trends</p>
+    <div class="header-badges">
+      <span class="hbadge accent">Power BI Project 2</span>
+      <span class="hbadge">Monthly Sales Trend</span>
+      <span class="hbadge">8 Product Categories</span>
+      <span class="hbadge">5 Regions</span>
+      <span class="hbadge">6 Channels</span>
+    </div>
+  </div>
+</header>
+
+<!-- KPI Strip -->
+<div class="kpi-strip">
+  <div class="kpi">
+    <div class="kpi-label">Total Revenue 2024</div>
+    <div class="kpi-value">$9,820K</div>
+    <div class="kpi-delta up">▲ 12.4% vs 2023</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Total Revenue 2023</div>
+    <div class="kpi-value">$8,740K</div>
+    <div class="kpi-delta up">▲ 11.2% vs 2022</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Best Month 2024</div>
+    <div class="kpi-value">Dec $1,050K</div>
+    <div class="kpi-delta up">▲ 14.1% vs target</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Top Category</div>
+    <div class="kpi-value">Electronics</div>
+    <div class="kpi-delta up">$5,090K total (2024)</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Top Region</div>
+    <div class="kpi-value">North</div>
+    <div class="kpi-delta up">$4,850K FY 2024</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">New Customers 2024</div>
+    <div class="kpi-value">28,560</div>
+    <div class="kpi-delta up">▲ 15.2% vs 2023</div>
+  </div>
+</div>
+
+<main>
+
+  <!-- ── SECTION 1: SALES TREND ── -->
+  <div class="section-sep">Sales Trend</div>
+  <div class="charts-grid">
+
+    <!-- Chart 1: Line — Monthly Sales 2022-2024 vs Target -->
+    <div class="chart-card wide" style="--accent-line: #1E3A5F;">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Monthly Sales Trend — 2022 vs 2023 vs 2024 vs Target</div>
+          <div class="card-sub">Revenue in USD Thousands · Jan–Dec comparison</div>
+        </div>
+        <span class="card-tag">Line Chart</span>
+      </div>
+      <div class="chart-wrap"><canvas id="c1" height="90"></canvas></div>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#93C5FD"></div> 2022</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#3B82F6"></div> 2023</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#1E3A5F"></div> 2024</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#E8832A; border-radius:50%"></div> Target</div>
+      </div>
+    </div>
+
+    <!-- Chart 2: Bar — YoY Growth % -->
+    <div class="chart-card" style="--accent-line: #27AE60;">
+      <div class="card-header">
+        <div>
+          <div class="card-title">YoY Revenue Growth %</div>
+          <div class="card-sub">2024 vs 2023 by month</div>
+        </div>
+        <span class="card-tag" style="--tag-bg:#DCFCE7;--tag-color:#166534;">Bar Chart</span>
+      </div>
+      <div class="chart-wrap"><canvas id="c2" height="160"></canvas></div>
+    </div>
+
+    <!-- Chart 3: Bar — vs Target % -->
+    <div class="chart-card" style="--accent-line: #E8832A;">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Performance vs Target 2024</div>
+          <div class="card-sub">% above or below monthly target</div>
+        </div>
+        <span class="card-tag" style="--tag-bg:#FEF3C7;--tag-color:#92400E;">Bar Chart</span>
+      </div>
+      <div class="chart-wrap"><canvas id="c3" height="160"></canvas></div>
+    </div>
+
+  </div>
+
+  <!-- ── SECTION 2: PRODUCT CATEGORY ── -->
+  <div class="section-sep">Product Category Trend</div>
+  <div class="charts-grid">
+
+    <!-- Chart 4: Stacked Bar — Category by Quarter -->
+    <div class="chart-card wide" style="--accent-line: #E8832A;">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Category Revenue by Quarter — Q1 2023 to Q4 2024</div>
+          <div class="card-sub">8 product categories · USD Thousands</div>
+        </div>
+        <span class="card-tag" style="--tag-bg:#FEF3C7;--tag-color:#92400E;">Stacked Bar</span>
+      </div>
+      <div class="chart-wrap"><canvas id="c4" height="90"></canvas></div>
+    </div>
+
+    <!-- Chart 5: Donut — Category Share 2024 -->
+    <div class="chart-card" style="--accent-line: #9B59B6;">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Category Revenue Share — 2024</div>
+          <div class="card-sub">Total by category (Q1–Q4 2024)</div>
+        </div>
+        <span class="card-tag" style="--tag-bg:#F3E8FF;--tag-color:#6B21A8;">Donut</span>
+      </div>
+      <div class="chart-wrap" style="max-width:320px; margin:0 auto;"><canvas id="c5" height="200"></canvas></div>
+    </div>
+
+    <!-- Chart 6: Line — Top 3 category trends -->
+    <div class="chart-card" style="--accent-line: #1E3A5F;">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Top 3 Category Quarterly Trend</div>
+          <div class="card-sub">Electronics, Apparel, Home & Kitchen</div>
+        </div>
+        <span class="card-tag">Line Chart</span>
+      </div>
+      <div class="chart-wrap"><canvas id="c6" height="200"></canvas></div>
+    </div>
+
+  </div>
+
+  <!-- ── SECTION 3: REGIONAL ── -->
+  <div class="section-sep">Regional Trend</div>
+  <div class="charts-grid">
+
+    <!-- Chart 7: Line — Regional Monthly -->
+    <div class="chart-card wide" style="--accent-line: #2E5F8A;">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Regional Monthly Revenue Trend — FY 2024</div>
+          <div class="card-sub">5 regions · USD Thousands · Jan–Dec</div>
+        </div>
+        <span class="card-tag" style="--tag-bg:#EFF6FF;--tag-color:#1e40af;">Line Chart</span>
+      </div>
+      <div class="chart-wrap"><canvas id="c7" height="90"></canvas></div>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#1E3A5F"></div> North</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#3B82F6"></div> South</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#E8832A"></div> East</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#27AE60"></div> West</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#9B59B6"></div> Central</div>
+      </div>
+    </div>
+
+    <!-- Chart 8: Bar — Region FY Total -->
+    <div class="chart-card" style="--accent-line: #2E5F8A;">
+      <div class="card-header">
+        <div>
+          <div class="card-title">FY 2024 Revenue by Region</div>
+          <div class="card-sub">Annual total · USD Thousands</div>
+        </div>
+        <span class="card-tag" style="--tag-bg:#EFF6FF;--tag-color:#1e40af;">Bar Chart</span>
+      </div>
+      <div class="chart-wrap"><canvas id="c8" height="180"></canvas></div>
+    </div>
+
+    <!-- Chart 9: Line — MoM Growth % -->
+    <div class="chart-card" style="--accent-line: #27AE60;">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Month-over-Month Growth % (North)</div>
+          <div class="card-sub">Revenue change vs prior month · 2024</div>
+        </div>
+        <span class="card-tag" style="--tag-bg:#DCFCE7;--tag-color:#166534;">Line Chart</span>
+      </div>
+      <div class="chart-wrap"><canvas id="c9" height="180"></canvas></div>
+    </div>
+
+  </div>
+
+  <!-- ── SECTION 4: CUSTOMER ACQUISITION ── -->
+  <div class="section-sep">Customer Acquisition Trend</div>
+  <div class="charts-grid">
+
+    <!-- Chart 10: Line — Channel trend Q1'22–Q4'24 -->
+    <div class="chart-card wide" style="--accent-line: #E74C3C;">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Customer Acquisition by Channel — Q1 2022 to Q4 2024</div>
+          <div class="card-sub">6 channels · New customers per quarter</div>
+        </div>
+        <span class="card-tag" style="--tag-bg:#FEE2E2;--tag-color:#991b1b;">Line Chart</span>
+      </div>
+      <div class="chart-wrap"><canvas id="c10" height="90"></canvas></div>
+    </div>
+
+    <!-- Chart 11: 100% Stacked Bar — Channel mix -->
+    <div class="chart-card" style="--accent-line: #E74C3C;">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Channel Mix % — Quarterly</div>
+          <div class="card-sub">Share of total acquisitions</div>
+        </div>
+        <span class="card-tag" style="--tag-bg:#FEE2E2;--tag-color:#991b1b;">100% Stacked</span>
+      </div>
+      <div class="chart-wrap"><canvas id="c11" height="200"></canvas></div>
+    </div>
+
+    <!-- Chart 12: Donut — Channel share 2024 -->
+    <div class="chart-card" style="--accent-line: #F4C430;">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Channel Share 2024</div>
+          <div class="card-sub">Q1–Q4 2024 total new customers</div>
+        </div>
+        <span class="card-tag" style="--tag-bg:#FEF9C3;--tag-color:#854d0e;">Donut</span>
+      </div>
+      <div class="chart-wrap" style="max-width:300px;margin:0 auto;"><canvas id="c12" height="200"></canvas></div>
+    </div>
+
+  </div>
+</main>
+
+<footer>Trend Analysis Dashboard · Power BI Project 2 · Data: FY 2022–2024 · Generated by Claude</footer>
+
+<script>
+const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const quarters = ['Q1\'23','Q2\'23','Q3\'23','Q4\'23','Q1\'24','Q2\'24','Q3\'24','Q4\'24'];
+const quarters12 = ['Q1\'22','Q2\'22','Q3\'22','Q4\'22','Q1\'23','Q2\'23','Q3\'23','Q4\'23','Q1\'24','Q2\'24','Q3\'24','Q4\'24'];
+
+// Data
+const s22=[520,490,610,580,640,700,750,720,670,690,730,810];
+const s23=[560,530,660,640,720,790,840,800,760,780,820,920];
+const s24=[610,580,730,700,800,880,950,910,850,870,930,1050];
+const tgt=[600,600,700,700,750,800,850,850,800,800,850,950];
+
+const cats=['Electronics','Apparel','Home & Kitchen','Sports','Beauty','Automotive','Books','Toys'];
+const catData={
+  'Electronics':  [420,460,510,580,540,600,670,750],
+  'Apparel':      [310,350,320,480,340,390,360,530],
+  'Home & Kitchen':[180,200,220,260,210,240,265,310],
+  'Sports':       [150,190,230,170,180,220,270,210],
+  'Beauty':       [120,140,155,200,145,168,185,230],
+  'Automotive':   [90,100,110,130,105,115,130,155],
+  'Books':        [60,55,65,100,70,65,75,115],
+  'Toys':         [80,90,75,180,95,105,88,210],
+};
+
+const regions={
+  North:  [320,300,380,360,400,440,480,460,430,450,470,520],
+  South:  [280,260,310,290,340,380,420,400,370,390,410,470],
+  East:   [240,220,275,260,300,330,360,340,315,330,355,410],
+  West:   [200,185,235,220,260,290,320,305,280,295,315,365],
+  Central:[150,140,175,165,195,215,240,230,210,220,235,275],
+};
+
+const channels={
+  'Organic Search':  [1200,1350,1500,1420,1600,1750,1900,1820,2000,2200,2400,2300],
+  'Paid Ads':        [800,950,1100,1050,1200,1350,1500,1450,1600,1800,2000,1950],
+  'Social Media':    [400,480,560,540,620,700,790,760,850,950,1060,1020],
+  'Referral':        [350,380,400,420,440,460,490,510,540,570,600,630],
+  'Email Campaign':  [300,320,310,350,360,380,370,410,420,440,430,470],
+  'Direct':          [200,210,220,230,240,250,260,270,285,300,315,330],
+};
+
+const catColors=['#1E3A5F','#2E5F8A','#E8832A','#27AE60','#9B59B6','#E74C3C','#F4C430','#16A085'];
+const chColors  =['#1E3A5F','#3B82F6','#E8832A','#27AE60','#9B59B6','#F4C430'];
+const regColors =['#1E3A5F','#3B82F6','#E8832A','#27AE60','#9B59B6'];
+
+const base={responsive:true,plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false,bodyFont:{family:'DM Sans'},titleFont:{family:'DM Sans',weight:'600'},backgroundColor:'rgba(20,30,50,.9)',padding:10,cornerRadius:8}},scales:{x:{grid:{display:false},ticks:{font:{family:'DM Sans',size:11},color:'#6b7a99'}},y:{grid:{color:'rgba(0,0,0,.05)'},ticks:{font:{family:'DM Sans',size:11},color:'#6b7a99'}}}};
+
+// C1 — Multi-line sales trend
+new Chart(document.getElementById('c1'),{
+  type:'line',
+  data:{
+    labels:months,
+    datasets:[
+      {label:'2022',data:s22,borderColor:'#93C5FD',backgroundColor:'rgba(147,197,253,.08)',tension:.4,borderWidth:2,pointRadius:3,fill:false},
+      {label:'2023',data:s23,borderColor:'#3B82F6',backgroundColor:'rgba(59,130,246,.08)',tension:.4,borderWidth:2,pointRadius:3,fill:false},
+      {label:'2024',data:s24,borderColor:'#1E3A5F',backgroundColor:'rgba(30,58,95,.1)',tension:.4,borderWidth:3,pointRadius:4,fill:false},
+      {label:'Target',data:tgt,borderColor:'#E8832A',borderDash:[6,4],tension:.4,borderWidth:2,pointRadius:0,fill:false},
+    ]
+  },
+  options:{...base,plugins:{...base.plugins,legend:{display:false}}}
+});
+
+// C2 — YoY Growth % bar
+const yoyG = s24.map((v,i)=>+((v-s23[i])/s23[i]*100).toFixed(1));
+new Chart(document.getElementById('c2'),{
+  type:'bar',
+  data:{labels:months,datasets:[{label:'YoY Growth %',data:yoyG,backgroundColor:yoyG.map(v=>v>=0?'#27AE60':'#E74C3C'),borderRadius:5,borderSkipped:false}]},
+  options:{...base,plugins:{...base.plugins,tooltip:{...base.plugins.tooltip,callbacks:{label:ctx=>`${ctx.raw}%`}}},scales:{...base.scales,y:{...base.scales?.y,ticks:{...base.scales?.y?.ticks,callback:v=>v+'%'}}}}
+});
+
+// C3 — vs Target %
+const vsT = s24.map((v,i)=>+((v-tgt[i])/tgt[i]*100).toFixed(1));
+new Chart(document.getElementById('c3'),{
+  type:'bar',
+  data:{labels:months,datasets:[{label:'vs Target %',data:vsT,backgroundColor:vsT.map(v=>v>=0?'rgba(232,131,42,.85)':'rgba(231,76,60,.85)'),borderRadius:5,borderSkipped:false}]},
+  options:{...base,plugins:{...base.plugins,tooltip:{...base.plugins.tooltip,callbacks:{label:ctx=>`${ctx.raw}%`}}},scales:{...base.scales,y:{...base.scales?.y,ticks:{...base.scales?.y?.ticks,callback:v=>v+'%'}}}}
+});
+
+// C4 — Stacked bar categories
+new Chart(document.getElementById('c4'),{
+  type:'bar',
+  data:{
+    labels:quarters,
+    datasets:cats.map((c,i)=>({label:c,data:catData[c],backgroundColor:catColors[i],borderWidth:0,borderRadius:i===cats.length-1?{topLeft:4,topRight:4}:0}))
+  },
+  options:{...base,plugins:{...base.plugins,legend:{display:true,position:'bottom',labels:{font:{family:'DM Sans',size:11},color:'#6b7a99',boxWidth:12,padding:12}}},scales:{x:{...base.scales.x,stacked:true},y:{...base.scales.y,stacked:true}}}
+});
+
+// C5 — Donut category share 2024
+const cat2024=cats.map(c=>catData[c].slice(4).reduce((a,b)=>a+b,0));
+new Chart(document.getElementById('c5'),{
+  type:'doughnut',
+  data:{labels:cats,datasets:[{data:cat2024,backgroundColor:catColors,borderWidth:2,borderColor:'#fff',hoverOffset:6}]},
+  options:{responsive:true,cutout:'62%',plugins:{legend:{display:true,position:'bottom',labels:{font:{family:'DM Sans',size:10},color:'#6b7a99',boxWidth:10,padding:8}},tooltip:{callbacks:{label:ctx=>`${ctx.label}: $${ctx.raw.toLocaleString()}K`}}}}
+});
+
+// C6 — Top 3 categories line
+const top3=['Electronics','Apparel','Home & Kitchen'];
+const top3Colors=['#1E3A5F','#E8832A','#27AE60'];
+new Chart(document.getElementById('c6'),{
+  type:'line',
+  data:{
+    labels:quarters,
+    datasets:top3.map((c,i)=>({label:c,data:catData[c],borderColor:top3Colors[i],backgroundColor:'transparent',tension:.4,borderWidth:2.5,pointRadius:4}))
+  },
+  options:{...base,plugins:{...base.plugins,legend:{display:true,position:'bottom',labels:{font:{family:'DM Sans',size:11},color:'#6b7a99',boxWidth:12,padding:10}}}}
+});
+
+// C7 — Regional line
+new Chart(document.getElementById('c7'),{
+  type:'line',
+  data:{
+    labels:months,
+    datasets:Object.entries(regions).map(([name,data],i)=>({label:name,data,borderColor:regColors[i],backgroundColor:'transparent',tension:.4,borderWidth:2,pointRadius:3}))
+  },
+  options:{...base,plugins:{...base.plugins,legend:{display:false}}}
+});
+
+// C8 — Region FY bar
+const regTotals=Object.entries(regions).map(([name,data])=>([name,data.reduce((a,b)=>a+b,0)]));
+new Chart(document.getElementById('c8'),{
+  type:'bar',
+  data:{
+    labels:regTotals.map(r=>r[0]),
+    datasets:[{label:'FY 2024 Revenue',data:regTotals.map(r=>r[1]),backgroundColor:regColors,borderRadius:6,borderSkipped:false}]
+  },
+  options:{...base,indexAxis:'y',plugins:{...base.plugins,tooltip:{callbacks:{label:ctx=>`$${ctx.raw.toLocaleString()}K`}}}}
+});
+
+// C9 — MoM Growth (North)
+const north=regions.North;
+const momG=north.slice(1).map((v,i)=>+((v-north[i])/north[i]*100).toFixed(1));
+new Chart(document.getElementById('c9'),{
+  type:'line',
+  data:{labels:months.slice(1),datasets:[{label:'MoM Growth %',data:momG,borderColor:'#27AE60',backgroundColor:'rgba(39,174,96,.1)',tension:.4,borderWidth:2.5,pointRadius:4,fill:true}]},
+  options:{...base,plugins:{...base.plugins,tooltip:{callbacks:{label:ctx=>`${ctx.raw}%`}}},scales:{...base.scales,y:{...base.scales.y,ticks:{callback:v=>v+'%'}}}}
+});
+
+// C10 — Channel acquisition line
+new Chart(document.getElementById('c10'),{
+  type:'line',
+  data:{
+    labels:quarters12,
+    datasets:Object.entries(channels).map(([name,data],i)=>({label:name,data,borderColor:chColors[i],backgroundColor:'transparent',tension:.4,borderWidth:2,pointRadius:3}))
+  },
+  options:{...base,plugins:{...base.plugins,legend:{display:true,position:'bottom',labels:{font:{family:'DM Sans',size:11},color:'#6b7a99',boxWidth:12,padding:10}}}}
+});
+
+// C11 — 100% stacked channel
+const chEntries=Object.entries(channels);
+const qtotals=quarters12.map((_,qi)=>chEntries.reduce((s,[,d])=>s+d[qi],0));
+new Chart(document.getElementById('c11'),{
+  type:'bar',
+  data:{
+    labels:quarters12,
+    datasets:chEntries.map(([name,data],i)=>({
+      label:name,
+      data:data.map((v,qi)=>+((v/qtotals[qi])*100).toFixed(1)),
+      backgroundColor:chColors[i],borderWidth:0
+    }))
+  },
+  options:{...base,plugins:{...base.plugins,legend:{display:true,position:'bottom',labels:{font:{family:'DM Sans',size:10},color:'#6b7a99',boxWidth:10,padding:8}},tooltip:{mode:'index',intersect:false,callbacks:{label:ctx=>`${ctx.dataset.label}: ${ctx.raw}%`}}},scales:{x:{...base.scales.x,stacked:true},y:{...base.scales.y,stacked:true,max:100,ticks:{callback:v=>v+'%'}}}}
+});
+
+// C12 — Channel donut 2024
+const ch2024=chEntries.map(([name,data])=>([name,data.slice(8).reduce((a,b)=>a+b,0)]));
+new Chart(document.getElementById('c12'),{
+  type:'doughnut',
+  data:{labels:ch2024.map(c=>c[0]),datasets:[{data:ch2024.map(c=>c[1]),backgroundColor:chColors,borderWidth:2,borderColor:'#fff',hoverOffset:6}]},
+  options:{responsive:true,cutout:'62%',plugins:{legend:{display:true,position:'bottom',labels:{font:{family:'DM Sans',size:10},color:'#6b7a99',boxWidth:10,padding:8}},tooltip:{callbacks:{label:ctx=>`${ctx.label}: ${ctx.raw.toLocaleString()}`}}}}
+});
+</script>
+</body>
+</html>
